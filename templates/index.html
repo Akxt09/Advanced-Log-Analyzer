@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Log Analytics Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.26.0/plotly.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.5.0/axios.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .header p {
+            font-size: 1.2em;
+            color: #7f8c8d;
+        }
+
+        .upload-section {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+        }
+
+        .upload-area {
+            border: 3px dashed #3498db;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            background: linear-gradient(45deg, #f8f9fa, #e9ecef);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            border-color: #2980b9;
+            background: linear-gradient(45deg, #e9ecef, #f8f9fa);
+            transform: translateY(-2px);
+        }
+
+        .upload-area.dragover {
+            border-color: #27ae60;
+            background: linear-gradient(45deg, #d4edda, #c3e6cb);
+        }
+
+        .upload-icon {
+            font-size: 4em;
+            color: #3498db;
+            margin-bottom: 20px;
+        }
+
+        .upload-text {
+            font-size: 1.3em;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .upload-subtext {
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(52, 152, 219, 0.4);
+        }
+
+        .btn:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .progress-container {
+            margin: 20px 0;
+            display: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #ecf0f1;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3498db, #2ecc71);
+            border-radius: 10px;
+            width: 0%;
+            transition: width 0.3s ease;
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -200px 0; }
+            100% { background-position: 200px 0; }
+        }
+
+        .results-section {
+            display: none;
+            margin-top: 30px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            transition: transform 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .stat-label {
+            color: #7f8c8d;
+            font-size: 1.1em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .insights-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .insight-card {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .insight-card h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+            display: flex;
+            align-items: center;
+        }
+
+        .insight-icon {
+            margin-right: 10px;
+            font-size: 1.5em;
+        }
+
+        .threat-level {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 0.8em;
+        }
+
+        .threat-low { background: #d4edda; color: #155724; }
+        .threat-medium { background: #fff3cd; color: #856404; }
+        .threat-high { background: #f8d7da; color: #721c24; }
+
+        .performance-score {
+            font-size: 3em;
+            font-weight: bold;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .score-excellent { color: #27ae60; }
+        .score-good { color: #f39c12; }
+        .score-poor { color: #e74c3c; }
+
+        .charts-section {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .chart-container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .chart-title {
+            font-size: 1.4em;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .alert {
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-weight: 500;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border-left: 5px solid #28a745;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border-left: 5px solid #dc3545;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+            color: #3498db;
+            font-size: 1.2em;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .recommendations {
+            list-style: none;
+            padding: 0;
+        }
+
+        .recommendations li {
+            padding: 10px 0;
+            border-bottom: 1px solid #ecf0f1;
+            position: relative;
+            padding-left: 25px;
+        }
+
+        .recommendations li:before {
+            content: "💡";
+            position: absolute;
+            left: 0;
+            top: 10px;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 30px;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9em;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .insights-section {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🚀 Advanced Log Analytics Dashboard</h1>
+            <p>Upload your log files for comprehensive analysis with AI-powered insights</p>
+        </div>
+
+        <!-- Upload Section -->
+        <div class="upload-section">
+            <div class="upload-area" id="upload-area">
+                <div class="upload-icon">📁</div>
+                <div class="upload-text">Drop your log files here or click to browse</div>
+                <div class="upload-subtext">Supports .log, .txt, .csv, .tsv files (max 1GB)</div>
+                <input type="file" id="file-input" accept=".log,.txt,.csv,.tsv" multiple>
+            </div>
+            
+            <div class="progress-container" id="progress-container">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    Processing your log files... This may take a few moments.
+                </div>
+            </div>
+        </div>
+
+        <!-- Alert Messages -->
+        <div id="alert-container"></div>
+
+        <!-- Results Section -->
+        <div class="results-section" id="results-section">
+            <!-- Key Statistics -->
+            <div class="stats-grid" id="stats-grid">
+                <!-- Stats will be populated dynamically -->
+            </div>
+
+            <!-- Insights Section -->
+            <div class="insights-section">
+                <!-- Security Insights -->
+                <div class="insight-card">
+                    <h3><span class="insight-icon">🔒</span>Security Analysis</h3>
+                    <div id="security-insights">
+                        <!-- Security insights will be populated -->
+                    </div>
+                </div>
+
+                <!-- Performance Insights -->
+                <div class="insight-card">
+                    <h3><span class="insight-icon">⚡</span>Performance Analysis</h3>
+                    <div id="performance-insights">
+                        <!-- Performance insights will be populated -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Section -->
+            <div class="charts-section">
+                <div class="chart-container">
+                    <div class="chart-title">🎯 IP Clustering Analysis</div>
+                    <div id="cluster-chart"></div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">🚨 Anomaly Detection</div>
+                    <div id="anomaly-chart"></div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">📈 48-Hour Traffic Forecast</div>
+                    <div id="forecast-chart"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>Advanced Log Analytics Dashboard v2.0 | Powered by AI & Machine Learning</p>
+        </div>
+    </div>
+
+    <script>
+        class LogAnalyticsDashboard {
+            constructor() {
+                this.initializeEventListeners();
+                this.currentData = null;
+            }
+
+            initializeEventListeners() {
+                const uploadArea = document.getElementById('upload-area');
+                const fileInput = document.getElementById('file-input');
+
+                // File drag and drop
+                uploadArea.addEventListener('click', () => fileInput.click());
+                uploadArea.addEventListener('dragover', this.handleDragOver.bind(this));
+                uploadArea.addEventListener('dragleave', this.handleDragLeave.bind(this));
+                uploadArea.addEventListener('drop', this.handleDrop.bind(this));
+                fileInput.addEventListener('change', this.handleFileSelect.bind(this));
+            }
+
+            handleDragOver(e) {
+                e.preventDefault();
+                document.getElementById('upload-area').classList.add('dragover');
+            }
+
+            handleDragLeave(e) {
+                e.preventDefault();
+                document.getElementById('upload-area').classList.remove('dragover');
+            }
+
+            handleDrop(e) {
+                e.preventDefault();
+                document.getElementById('upload-area').classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    this.uploadFile(files[0]);
+                }
+            }
+
+            handleFileSelect(e) {
+                const files = e.target.files;
+                if (files.length > 0) {
+                    this.uploadFile(files[0]);
+                }
+            }
+
+            async uploadFile(file) {
+                // Validate file
+                if (!this.validateFile(file)) {
+                    return;
+                }
+
+                // Show loading state
+                this.showLoading();
+
+                // Create form data
+                const formData = new FormData();
+                formData.append('file', file);
+
+                try {
+                    // Upload file
+                    const response = await axios.post('/upload', formData, {
+                        headers: { 'Content-Type': 'multipart/form-data' },
+                        onUploadProgress: this.updateProgress.bind(this)
+                    });
+
+                    if (response.data.success) {
+                        this.currentData = response.data;
+                        this.displayResults(response.data);
+                        this.showAlert('Analysis completed successfully!', 'success');
+                    } else {
+                        throw new Error(response.data.error || 'Analysis failed');
+                    }
+                } catch (error) {
+                    console.error('Upload error:', error);
+                    this.showAlert(`Error: ${error.response?.data?.error || error.message}`, 'error');
+                } finally {
+                    this.hideLoading();
+                }
+            }
+
+            validateFile(file) {
+                const allowedTypes = ['.log', '.txt', '.csv', '.tsv'];
+                const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+                
+                if (!allowedTypes.includes(fileExtension)) {
+                    this.showAlert('Invalid file type. Please upload .log, .txt, .csv, or .tsv files.', 'error');
+                    return false;
+                }
+
+                if (file.size > 1024 * 1024 * 1024) { // 1GB
+                    this.showAlert('File too large. Maximum size is 1GB.', 'error');
+                    return false;
+                }
+
+                return true;
+            }
+
+            updateProgress(progressEvent) {
+                const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                document.getElementById('progress-fill').style.width = percentCompleted + '%';
+            }
+
+            showLoading() {
+                document.getElementById('progress-container').style.display = 'block';
+                document.getElementById('loading').style.display = 'block';
+                document.getElementById('results-section').style.display = 'none';
+            }
+
+            hideLoading() {
+                document.getElementById('progress-container').style.display = 'none';
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('progress-fill').style.width = '0%';
+            }
+
+            showAlert(message, type) {
+                const alertContainer = document.getElementById('alert-container');
+                const alert = document.createElement('div');
+                alert.className = `alert alert-${type}`;
+                alert.textContent = message;
+                
+                alertContainer.innerHTML = '';
+                alertContainer.appendChild(alert);
+                
+                // Auto-hide success alerts
+                if (type === 'success') {
+                    setTimeout(() => {
+                        alert.style.opacity = '0';
+                        setTimeout(() => alert.remove(), 300);
+                    }, 5000);
+                }
+            }
+
+            displayResults(data) {
+                // Show results section
+                document.getElementById('results-section').style.display = 'block';
+
+                // Display statistics
+                this.displayStatistics(data.stats);
+
+                // Display insights
+                this.displaySecurityInsights(data.security_insights);
+                this.displayPerformanceInsights(data.performance_insights);
+
+                // Display charts
+                this.displayCharts(data.graphs);
+
+                // Scroll to results
+                document.getElementById('results-section').scrollIntoView({ 
+                    behavior: 'smooth' 
+                });
+            }
+
+            displayStatistics(stats) {
+                const statsGrid = document.getElementById('stats-grid');
+                statsGrid.innerHTML = '';
+
+                const keyStats = [
+                    { label: 'Total Requests', value: this.formatNumber(stats.total_requests), icon: '📊' },
+                    { label: 'Unique IPs', value: this.formatNumber(stats.unique_ips), icon: '🌐' },
+                    { label: 'Error Rate', value: `${stats.error_rate_pct.toFixed(1)}%`, icon: '❌' },
+                    { label: 'Requests/Hour', value: this.formatNumber(Math.round(stats.requests_per_hour)), icon: '⏱️' },
+                    { label: 'Peak Hour', value: `${stats.peak_hour}:00`, icon: '📈' },
+                    { label: 'Duration', value: `${stats.duration_hours.toFixed(1)}h`, icon: '⏰' }
+                ];
+
+                if (stats.total_bandwidth_gb) {
+                    keyStats.push({ 
+                        label: 'Bandwidth', 
+                        value: `${stats.total_bandwidth_gb.toFixed(2)} GB`, 
+                        icon: '💾' 
+                    });
+                }
+
+                if (stats.avg_response_time) {
+                    keyStats.push({ 
+                        label: 'Avg Response', 
+                        value: `${Math.round(stats.avg_response_time)}ms`, 
+                        icon: '⚡' 
+                    });
+                }
+
+                keyStats.forEach(stat => {
+                    const card = document.createElement('div');
+                    card.className = 'stat-card';
+                    card.innerHTML = `
+                        <div class="stat-value">${stat.icon} ${stat.value}</div>
+                        <div class="stat-label">${stat.label}</div>
+                    `;
+                    statsGrid.appendChild(card);
+                });
+            }
+
+            displaySecurityInsights(insights) {
+                const container = document.getElementById('security-insights');
+                const threatClass = `threat-${insights.threat_level.toLowerCase()}`;
+                
+                container.innerHTML = `
+                    <div style="margin-bottom: 15px;">
+                        <span class="threat-level ${threatClass}">${insights.threat_level} Risk</span>
+                        <div style="margin-top: 10px;">
+                            <strong>Threats Detected:</strong> ${insights.total_threats}
+                        </div>
+                    </div>
+                    
+                    ${insights.suspicious_ips.length > 0 ? `
+                        <div style="margin-bottom: 15px;">
+                            <strong>🚨 Suspicious IPs:</strong>
+                            <div style="margin-top: 5px; font-family: monospace; font-size: 0.9em;">
+                                ${insights.suspicious_ips.slice(0, 5).join('<br>')}
+                                ${insights.suspicious_ips.length > 5 ? `<br>... and ${insights.suspicious_ips.length - 5} more` : ''}
+                            </div>
+                        </div>
+                    ` : ''}
+                    
+                    ${insights.attack_patterns.length > 0 ? `
+                        <div style="margin-bottom: 15px;">
+                            <strong>🎯 Attack Patterns:</strong>
+                            <ul style="margin-top: 5px; padding-left: 20px;">
+                                ${insights.attack_patterns.map(pattern => `<li>${pattern}</li>`).join('')}
+                            </ul>
+                        </div>
+                    ` : ''}
+                    
+                    ${insights.recommendations.length > 0 ? `
+                        <div>
+                            <strong>💡 Recommendations:</strong>
+                            <ul class="recommendations">
+                                ${insights.recommendations.map(rec => `<li>${rec}</li>`).join('')}
+                            </ul>
+                        </div>
+                    ` : ''}
+                `;
+            }
+
+            displayPerformanceInsights(insights) {
+                const container = document.getElementById('performance-insights');
+                const scoreClass = insights.performance_score >= 80 ? 'score-excellent' : 
+                                 insights.performance_score >= 60 ? 'score-good' : 'score-poor';
+                
+                container.innerHTML = `
+                    <div class="performance-score ${scoreClass}">${insights.performance_score}/100</div>
+                    
+                    ${insights.bottlenecks.length > 0 ? `
+                        <div style="margin-bottom: 15px;">
+                            <strong>⚠️ Performance Issues:</strong>
+                            <ul style="margin-top: 5px; padding-left: 20px;">
+                                ${insights.bottlenecks.map(issue => `<li>${issue}</li>`).join('')}
+                            </ul>
+                        </div>
+                    ` : ''}
+                    
+                    ${Object.keys(insights.resource_usage).length > 0 ? `
+                        <div style="margin-bottom: 15px;">
+                            <strong>📊 Resource Usage:</strong>
+                            <div style="margin-top: 5px;">
+                                ${Object.entries(insights.resource_usage).map(([key, value]) => 
+                                    `<div>${key.replace('_', ' ').toUpperCase()}: ${value}</div>`
+                                ).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                    
+                    ${insights.optimization_tips.length > 0 ? `
+                        <div>
+                            <strong>🚀 Optimization Tips:</strong>
+                            <ul class="recommendations">
+                                ${insights.optimization_tips.map(tip => `<li>${tip}</li>`).join('')}
+                            </ul>
+                        </div>
+                    ` : ''}
+                `;
+            }
+
+            displayCharts(graphs) {
+                // Display cluster chart
+                if (graphs.cluster) {
+                    const clusterData = JSON.parse(graphs.cluster);
+                    Plotly.newPlot('cluster-chart', clusterData.data, clusterData.layout, {
+                        responsive: true,
+                        displayModeBar: true
+                    });
+                }
+
+                // Display anomaly chart
+                if (graphs.anomaly) {
+                    const anomalyData = JSON.parse(graphs.anomaly);
+                    Plotly.newPlot('anomaly-chart', anomalyData.data, anomalyData.layout, {
+                        responsive: true,
+                        displayModeBar: true
+                    });
+                }
+
+                // Display forecast chart
+                if (graphs.forecast) {
+                    const forecastData = JSON.parse(graphs.forecast);
+                    Plotly.newPlot('forecast-chart', forecastData.data, forecastData.layout, {
+                        responsive: true,
+                        displayModeBar: true
+                    });
+                }
+            }
+
+            formatNumber(num) {
+                if (num >= 1000000) {
+                    return (num / 1000000).toFixed(1) + 'M';
+                } else if (num >= 1000) {
+                    return (num / 1000).toFixed(1) + 'K';
+                }
+                return num.toString();
+            }
+        }
+
+        // Initialize dashboard when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new LogAnalyticsDashboard();
+        });
+    </script>
+</body>
+</html>

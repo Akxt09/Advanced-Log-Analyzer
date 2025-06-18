@@ -1,0 +1,35 @@
+# Flask and Web Framework
+Flask==2.3.3
+Werkzeug==2.3.7
+
+# Data Processing and Analysis
+pandas==2.1.1
+numpy==1.24.3
+scipy==1.11.3
+
+# Machine Learning and Clustering
+scikit-learn==1.3.0
+
+# Time Series Forecasting
+prophet==1.1.4
+
+# Visualization
+plotly==5.17.0
+seaborn==0.12.2
+matplotlib==3.7.2
+
+# Text Processing and Analysis
+textblob==0.17.1
+
+# IP and User Agent Analysis
+geoip2==4.7.0
+user-agents==2.2.0
+
+# Utility Libraries
+python-dateutil==2.8.2
+pytz==2023.3
+requests==2.31.0
+
+# Additional Dependencies for Prophet
+cmdstanpy==1.1.0
+holidays==0.34
