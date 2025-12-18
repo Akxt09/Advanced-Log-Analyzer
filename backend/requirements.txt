@@ -1,0 +1,36 @@
+# Web Framework
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-multipart==0.0.6
+pydantic==2.5.3
+pydantic-settings==2.1.0
+
+# Data Processing
+polars==0.20.3
+numpy==1.26.3
+pyarrow==14.0.2
+
+# Machine Learning - Anomaly Detection
+tensorflow==2.15.0
+scikit-learn==1.4.0
+hdbscan==0.8.33
+
+# Forecasting
+neuralprophet==0.7.0
+torch==2.1.2
+
+# Explainability
+shap==0.44.1
+
+# Visualization & Utils
+plotly==5.18.0
+python-dateutil==2.8.2
+user-agents==2.2.0
+
+# Async & Performance
+aiofiles==23.2.1
+orjson==3.9.12
+
+# Development
+pytest==7.4.4
+black==24.1.1
